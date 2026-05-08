@@ -484,36 +484,65 @@ textarea:focus {
   stroke-width: 3px;
 }
 
+.amida-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 8px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.62);
+  scrollbar-color: #fb923c #ffedd5;
+  scrollbar-width: thin;
+}
+
+.amida-scroll:focus {
+  outline: 3px solid rgba(249, 115, 22, 0.24);
+  outline-offset: 2px;
+}
+
 .amidakuji {
-  width: min(100%, 640px);
+  display: block;
+  width: max(100%, 980px);
   height: auto;
-  min-height: 280px;
+  min-height: 390px;
 }
 
 .amidakuji text {
   fill: #1f2937;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 800;
   text-anchor: middle;
 }
 
+.amidakuji .top-label {
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.9);
+  stroke-width: 5px;
+}
+
+.amidakuji .bottom-label {
+  fill: #92400e;
+  font-size: 16px;
+}
+
 .amidakuji .base {
   stroke: #f97316;
-  stroke-width: 4;
+  stroke-width: 5;
   stroke-linecap: round;
   filter: drop-shadow(0 2px 1px rgba(249, 115, 22, 0.18));
 }
 
 .amidakuji .bridge {
   stroke: #60a5fa;
-  stroke-width: 4;
+  stroke-width: 5;
   stroke-linecap: round;
 }
 
 .amidakuji .route {
   fill: none;
   stroke: #e11d48;
-  stroke-width: 8;
+  stroke-width: 10;
   stroke-linecap: round;
   stroke-linejoin: round;
   filter: drop-shadow(0 3px 3px rgba(225, 29, 72, 0.28));
@@ -815,6 +844,15 @@ textarea:focus {
     min-height: clamp(260px, 68vh, 420px);
   }
 
+  .amida-scroll {
+    padding: 8px 6px 12px;
+  }
+
+  .amidakuji {
+    width: 1180px;
+    min-height: 390px;
+  }
+
   .roulette-wrap {
     width: min(82vw, 318px);
   }
@@ -839,6 +877,10 @@ textarea:focus {
 @media (max-width: 460px) {
   .visual {
     min-height: 255px;
+  }
+
+  .amidakuji {
+    width: 1220px;
   }
 
   .games {

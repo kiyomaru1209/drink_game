@@ -344,6 +344,11 @@ function escapeHtml(value) {
   })[char]);
 }
 
+function compactName(name) {
+  const value = String(name);
+  return value.length > 5 ? `${value.slice(0, 4)}…` : value;
+}
+
 function sectorPath(cx, cy, radius, startAngle, endAngle) {
   const start = polarToCartesian(cx, cy, radius, endAngle);
   const end = polarToCartesian(cx, cy, radius, startAngle);
@@ -419,19 +424,19 @@ function runRoulette(participants) {
 
 function buildAmidakuji(participants) {
   const lanes = participants.length;
-  const width = Math.max(360, lanes * 90);
-  const height = 330;
-  const top = 48;
-  const bottom = 280;
-  const left = 38;
+  const width = Math.max(720, lanes * 72);
+  const height = 430;
+  const top = 78;
+  const bottom = 350;
+  const left = 48;
   const right = width - 38;
   const gap = lanes === 1 ? 0 : (right - left) / (lanes - 1);
   const lineXs = participants.map((_, index) => left + gap * index);
   const bridges = [];
-  const levels = Math.max(6, lanes + 3);
+  const levels = Math.max(8, lanes + 4);
 
   for (let level = 0; level < levels; level += 1) {
-    const y = top + 34 + level * ((bottom - top - 68) / Math.max(1, levels - 1));
+    const y = top + 30 + level * ((bottom - top - 60) / Math.max(1, levels - 1));
     const candidates = [];
     for (let lane = 0; lane < lanes - 1; lane += 1) candidates.push(lane);
     shuffle(candidates).slice(0, Math.max(1, Math.floor(lanes / 2))).forEach((lane) => {
@@ -463,18 +468,20 @@ function renderAmidakuji(participants, route = null) {
   const data = buildAmidakuji(participants);
   const lines = data.lineXs.map((x) => `<line class="base" x1="${x}" y1="${data.top}" x2="${x}" y2="${data.bottom}"></line>`).join('');
   const bridges = data.bridges.map((bridge) => `<line class="bridge" x1="${data.lineXs[bridge.lane]}" y1="${bridge.y}" x2="${data.lineXs[bridge.lane + 1]}" y2="${bridge.y}"></line>`).join('');
-  const names = participants.map((name, index) => `<text x="${data.lineXs[index]}" y="24">${escapeHtml(name)}</text>`).join('');
-  const goals = participants.map((_, index) => `<text x="${data.lineXs[index]}" y="315">${index + 1}</text>`).join('');
+  const names = participants.map((name, index) => `<text class="top-label" x="${data.lineXs[index]}" y="34"><title>${escapeHtml(name)}</title>${escapeHtml(compactName(name))}</text>`).join('');
+  const goals = participants.map((_, index) => `<text class="bottom-label" x="${data.lineXs[index]}" y="402">${index + 1}</text>`).join('');
   const routePath = route ? `<polyline class="route" points="${route.points.map((point) => `${point.x},${point.y}`).join(' ')}"></polyline>` : '';
 
   visual.innerHTML = `
-    <svg class="amidakuji" viewBox="0 0 ${data.width} ${data.height}" role="img" aria-label="あみだくじ">
-      ${names}
-      ${lines}
-      ${bridges}
-      ${routePath}
-      ${goals}
-    </svg>
+    <div class="amida-scroll" tabindex="0" aria-label="横にスクロールできるあみだくじ">
+      <svg class="amidakuji" viewBox="0 0 ${data.width} ${data.height}" role="img" aria-label="あみだくじ">
+        ${names}
+        ${lines}
+        ${bridges}
+        ${routePath}
+        ${goals}
+      </svg>
+    </div>
   `;
   visual.dataset.amida = JSON.stringify(data);
 }
@@ -487,16 +494,18 @@ function runAmidakuji(participants) {
   const route = traceAmidakuji(startLane, data);
   const lines = data.lineXs.map((x) => `<line class="base" x1="${x}" y1="${data.top}" x2="${x}" y2="${data.bottom}"></line>`).join('');
   const bridges = data.bridges.map((bridge) => `<line class="bridge" x1="${data.lineXs[bridge.lane]}" y1="${bridge.y}" x2="${data.lineXs[bridge.lane + 1]}" y2="${bridge.y}"></line>`).join('');
-  const names = participants.map((name, index) => `<text x="${data.lineXs[index]}" y="24">${escapeHtml(name)}</text>`).join('');
-  const goals = participants.map((_, index) => `<text x="${data.lineXs[index]}" y="315">${index + 1}</text>`).join('');
+  const names = participants.map((name, index) => `<text class="top-label" x="${data.lineXs[index]}" y="34"><title>${escapeHtml(name)}</title>${escapeHtml(compactName(name))}</text>`).join('');
+  const goals = participants.map((_, index) => `<text class="bottom-label" x="${data.lineXs[index]}" y="402">${index + 1}</text>`).join('');
   visual.innerHTML = `
-    <svg class="amidakuji" viewBox="0 0 ${data.width} ${data.height}" role="img" aria-label="あみだくじの結果">
-      ${names}
-      ${lines}
-      ${bridges}
-      <polyline class="route" points="${route.points.map((point) => `${point.x},${point.y}`).join(' ')}"></polyline>
-      ${goals}
-    </svg>
+    <div class="amida-scroll" tabindex="0" aria-label="横にスクロールできるあみだくじの結果">
+      <svg class="amidakuji" viewBox="0 0 ${data.width} ${data.height}" role="img" aria-label="あみだくじの結果">
+        ${names}
+        ${lines}
+        ${bridges}
+        <polyline class="route" points="${route.points.map((point) => `${point.x},${point.y}`).join(' ')}"></polyline>
+        ${goals}
+      </svg>
+    </div>
   `;
   setResult(`${escapeHtml(participants[route.lane])}さん！`);
   markGamePlayed('amidakuji');
