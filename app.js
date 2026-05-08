@@ -181,22 +181,17 @@ function validateParticipants() {
 }
 
 function getRouletteSlices(participants) {
-  const total = getWeightTotal(participants);
-  const effectiveWeights = total > 0
-    ? getWeights(participants).map((weight) => Math.max(0, weight))
-    : participants.map(() => 1);
-  const effectiveTotal = effectiveWeights.reduce((sum, weight) => sum + weight, 0);
+  const sliceSize = 360 / participants.length;
   let cursor = 0;
 
-  return effectiveWeights.map((weight, index) => {
+  return participants.map((_, index) => {
     const start = cursor;
-    const size = 360 * (weight / effectiveTotal);
-    cursor += size;
+    cursor += sliceSize;
     return {
       index,
       start,
       end: cursor,
-      center: start + size / 2
+      center: start + sliceSize / 2
     };
   });
 }
