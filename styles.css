@@ -43,9 +43,32 @@ body::before {
   animation: floorMove 18s linear infinite;
 }
 
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+  opacity: 0;
+  background:
+    radial-gradient(circle at 50% 36%, rgba(255, 255, 255, 0.95), transparent 0 18%),
+    radial-gradient(circle at 50% 42%, rgba(249, 115, 22, 0.34), transparent 0 36%),
+    radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.28), transparent 0 48%);
+}
+
+body.finale::after {
+  animation: finaleFlash 820ms ease-out;
+}
+
 @keyframes floorMove {
   from { background-position: 0 0, 0 0; }
   to { background-position: 84px 42px, 42px 84px; }
+}
+
+@keyframes finaleFlash {
+  0% { opacity: 0; transform: scale(0.9); }
+  28% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
 }
 
 button,
@@ -258,6 +281,13 @@ textarea:focus {
   animation: stageShake 520ms cubic-bezier(.22, .8, .25, 1);
 }
 
+.stage.reveal {
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px rgba(255, 255, 255, 0.75),
+    0 0 42px rgba(249, 115, 22, 0.34);
+}
+
 @keyframes stageLights {
   from { background-position: 0 0, 0 0; }
   to { background-position: 100% 0, 0 0; }
@@ -420,10 +450,23 @@ textarea:focus {
   animation: pop 720ms cubic-bezier(.2, 1.4, .34, 1);
 }
 
+.result.final {
+  background:
+    linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(190, 18, 60, 0.92)),
+    linear-gradient(90deg, #f97316, #ec4899, #2563eb);
+  animation: finalPulse 1200ms ease-out;
+}
+
 @keyframes pop {
   0% { transform: scale(0.78) rotate(-2deg); filter: saturate(0.7); }
   70% { transform: scale(1.05) rotate(1deg); }
   100% { transform: scale(1) rotate(0); filter: saturate(1); }
+}
+
+@keyframes finalPulse {
+  0% { box-shadow: 0 0 0 rgba(249, 115, 22, 0), inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
+  40% { box-shadow: 0 0 38px rgba(249, 115, 22, 0.48), inset 0 0 0 1px rgba(255, 255, 255, 0.28); }
+  100% { box-shadow: 0 16px 32px rgba(127, 29, 29, 0.2), inset 0 0 0 1px rgba(255, 255, 255, 0.14); }
 }
 
 .roulette-wrap {

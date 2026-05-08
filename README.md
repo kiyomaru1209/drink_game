@@ -9,7 +9,6 @@ https://kiyomaru1209.github.io/drink_game/
 ## 構成
 
 - `index.html`: 画面構造
-- `settings.js`: 初期メンバーとゲーム別の裏側確率設定
 - `styles.css`: レイアウト、配色、演出アニメーション
 - `app.js`: ゲームロジック、重み付き抽選、名前のローカル保存、紙吹雪などの演出
 - `docs/requirements.md`: 要件定義書
@@ -17,7 +16,7 @@ https://kiyomaru1209.github.io/drink_game/
 ## 機能
 
 - 参加者名をブラウザの `localStorage` に保存
-- 合原の確率は `settings.js` の `probabilitySteps` でゲーム別に調整
+- 合原の確率は `app.js` 内の裏側設定でゲーム別に調整
 - 各ゲームは初回だけ合原100%、回数を重ねると確率が下がり、最後は全員均等
 - ルーレット、あみだくじ、爆弾ゲーム、王様ゲームは進行型の裏側抽選
 - 順番決めは進行型の裏側抽選で1番目を決め、残りをランダムに並び替え

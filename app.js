@@ -27,16 +27,44 @@ const gameMeta = {
 };
 
 const colors = ['#f97316', '#ec4899', '#2563eb', '#16a34a', '#eab308', '#8b5cf6', '#14b8a6', '#ef4444'];
-const settings = window.DRINK_GAME_SETTINGS || {};
-const defaultParticipants = Array.isArray(settings.defaultParticipants) ? settings.defaultParticipants : [];
-const targetParticipant = settings.targetParticipant || '合原';
-const probabilitySteps = settings.probabilitySteps || {};
+const defaultParticipants = [
+  '勝木',
+  '合原',
+  '佐藤大樹',
+  'まる',
+  '村本',
+  'たも',
+  '清水優太',
+  'だいき',
+  '西塚',
+  'たばた',
+  '吉川',
+  '石神',
+  'そら',
+  'あらい',
+  'Kanda',
+  'AK',
+  'むらかみ',
+  'まるや'
+];
+const oddsProfile = {
+  targetName: '合原',
+  stepsByGame: {
+    roulette: [100, 80, 60, 40, 25, 12],
+    amidakuji: [100, 75, 55, 35, 20, 10],
+    bomb: [100, 85, 65, 45, 25, 12],
+    king: [100, 70, 50, 30, 18, 10],
+    order: [100, 80, 60, 40, 25, 12]
+  }
+};
+const targetParticipant = oddsProfile.targetName;
+const probabilitySteps = oddsProfile.stepsByGame;
 const storageKeys = {
   names: 'drinkGame.names.v1',
   gameRuns: 'drinkGame.gameRuns.v1',
   version: 'drinkGame.version'
 };
-const appVersion = '2026-05-08-progressive-odds-v4';
+const appVersion = '2026-05-08-bundled-odds-v5';
 const legacyDemoParticipants = ['佐藤', '田中', '鈴木', '高橋', '山本'];
 
 const input = document.querySelector('#names-input');
@@ -237,9 +265,9 @@ function getRouletteSlices(participants) {
 function setResult(message, isPop = true) {
   result.innerHTML = `<span class="result-inner">${message}</span>`;
   if (!isPop) return;
-  result.classList.remove('pop');
+  result.classList.remove('pop', 'final');
   requestAnimationFrame(() => {
-    result.classList.add('pop');
+    result.classList.add('pop', 'final');
   });
 }
 
@@ -248,11 +276,20 @@ function setVisualPlaying(isPlaying) {
 }
 
 function celebrate(type = 'normal') {
+  document.body.classList.remove('finale');
+  stage.classList.remove('reveal');
   stage.classList.remove('shake');
-  requestAnimationFrame(() => stage.classList.add('shake'));
+  requestAnimationFrame(() => {
+    document.body.classList.add('finale');
+    stage.classList.add('shake', 'reveal');
+  });
   const intensity = type === 'big' ? 140 : type === 'bomb' ? 110 : 80;
   launchConfetti(intensity);
   window.setTimeout(() => stage.classList.remove('shake'), 620);
+  window.setTimeout(() => {
+    document.body.classList.remove('finale');
+    stage.classList.remove('reveal');
+  }, 1200);
 }
 
 function resizeConfettiCanvas() {
@@ -484,6 +521,7 @@ function renderAmidakuji(participants, route = null) {
     </div>
   `;
   visual.dataset.amida = JSON.stringify(data);
+  centerAmidaRoute(route, data);
 }
 
 function runAmidakuji(participants) {
@@ -509,7 +547,22 @@ function runAmidakuji(participants) {
   `;
   setResult(`${escapeHtml(participants[route.lane])}さん！`);
   markGamePlayed('amidakuji');
+  centerAmidaRoute(route, data);
   celebrate('normal');
+}
+
+function centerAmidaRoute(route, data) {
+  if (!route) return;
+  requestAnimationFrame(() => {
+    const scroller = visual.querySelector('.amida-scroll');
+    if (!scroller) return;
+    const routeCenter = route.points.reduce((sum, point) => sum + point.x, 0) / route.points.length;
+    const scale = scroller.scrollWidth / data.width;
+    scroller.scrollTo({
+      left: Math.max(0, routeCenter * scale - scroller.clientWidth / 2),
+      behavior: 'smooth'
+    });
+  });
 }
 
 function renderBomb(participants) {
