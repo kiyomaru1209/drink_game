@@ -188,6 +188,58 @@ textarea:focus {
   box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.16);
 }
 
+.participant-editor {
+  border: 1px solid rgba(254, 215, 170, 0.82);
+  border-radius: 8px;
+  background: rgba(255, 247, 237, 0.72);
+  overflow: hidden;
+}
+
+.participant-editor summary {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 9px 12px;
+  color: #9a3412;
+  cursor: pointer;
+  font-weight: 850;
+}
+
+.participant-editor textarea {
+  border: 0;
+  border-top: 1px solid rgba(254, 215, 170, 0.82);
+  border-radius: 0;
+  min-height: 152px;
+  box-shadow: none;
+}
+
+.participant-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 4px;
+  scrollbar-width: none;
+}
+
+.participant-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.participant-chip {
+  flex: 0 0 auto;
+  max-width: 88px;
+  overflow: hidden;
+  border: 1px solid rgba(249, 115, 22, 0.24);
+  border-radius: 999px;
+  padding: 5px 9px;
+  color: #7c2d12;
+  background: rgba(255, 255, 255, 0.74);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .error {
   min-height: 22px;
   color: #b91c1c;
@@ -846,10 +898,26 @@ textarea:focus {
   }
 
   textarea {
-    min-height: 128px;
+    min-height: 122px;
     max-height: 190px;
     padding: 11px;
     font-size: 0.95rem;
+  }
+
+  .participant-editor:not([open]) {
+    display: block;
+  }
+
+  .participant-editor summary {
+    min-height: 38px;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+  }
+
+  .participant-chip {
+    max-width: 74px;
+    padding: 4px 8px;
+    font-size: 0.74rem;
   }
 
   .games {

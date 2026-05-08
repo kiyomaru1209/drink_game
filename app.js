@@ -61,15 +61,16 @@ const targetParticipant = oddsProfile.targetName;
 const probabilitySteps = oddsProfile.stepsByGame;
 const storageKeys = {
   names: 'drinkGame.names.v1',
-  gameRuns: 'drinkGame.gameRuns.v1',
+  oddsStep: 'drinkGame.oddsStep.v1',
   version: 'drinkGame.version'
 };
-const appVersion = '2026-05-08-bundled-odds-v5';
+const appVersion = '2026-05-08-global-odds-v6';
 const legacyDemoParticipants = ['佐藤', '田中', '鈴木', '高橋', '山本'];
 
 const input = document.querySelector('#names-input');
 const count = document.querySelector('#participant-count');
 const error = document.querySelector('#error');
+const participantStrip = document.querySelector('#participant-strip');
 const tabs = Array.from(document.querySelectorAll('.game-tab'));
 const title = document.querySelector('#game-title');
 const hint = document.querySelector('#game-hint');
@@ -87,7 +88,7 @@ let bombTimer = null;
 let bombTicker = null;
 let confettiFrame = null;
 let confettiPieces = [];
-let gameRuns = loadGameRuns();
+let oddsStep = loadOddsStep();
 
 migrateStoredData();
 
@@ -108,7 +109,8 @@ function migrateStoredData() {
     }
 
     localStorage.removeItem('drinkGame.weights.v1');
-    localStorage.removeItem(storageKeys.gameRuns);
+    localStorage.removeItem('drinkGame.gameRuns.v1');
+    localStorage.removeItem(storageKeys.oddsStep);
     localStorage.setItem(storageKeys.version, appVersion);
   } catch (error) {
     // localStorage が使えない環境では、メモリ上の初期値で動かす。
@@ -140,38 +142,27 @@ function saveNames(participants = getParticipants()) {
   }
 }
 
-function loadGameRuns() {
+function loadOddsStep() {
   try {
-    const stored = JSON.parse(localStorage.getItem(storageKeys.gameRuns));
-    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
-      return Object.fromEntries(
-        Object.entries(stored)
-          .map(([game, count]) => [game, Number(count)])
-          .filter(([, count]) => Number.isFinite(count) && count >= 0)
-      );
-    }
+    const stored = Number(localStorage.getItem(storageKeys.oddsStep));
+    return Number.isFinite(stored) && stored >= 0 ? stored : 0;
   } catch (error) {
-    localStorage.removeItem(storageKeys.gameRuns);
+    localStorage.removeItem(storageKeys.oddsStep);
   }
-  return {};
+  return 0;
 }
 
-function saveGameRuns() {
+function saveOddsStep() {
   try {
-    localStorage.setItem(storageKeys.gameRuns, JSON.stringify(gameRuns));
+    localStorage.setItem(storageKeys.oddsStep, String(oddsStep));
   } catch (error) {
     // 保存できない環境では、ページを開いている間だけ進行する。
   }
 }
 
-function markGamePlayed(game) {
-  gameRuns[game] = getGameRunCount(game) + 1;
-  saveGameRuns();
-}
-
-function getGameRunCount(game) {
-  const count = Number(gameRuns[game]);
-  return Number.isFinite(count) && count >= 0 ? count : 0;
+function markGamePlayed() {
+  oddsStep += 1;
+  saveOddsStep();
 }
 
 function getParticipants() {
@@ -216,8 +207,7 @@ function getTargetProbability(game, participants) {
   if (targetIndex < 0) return getEqualProbability(participants);
 
   const steps = Array.isArray(probabilitySteps[game]) ? probabilitySteps[game] : [];
-  const runCount = getGameRunCount(game);
-  const percent = Number(steps[runCount]);
+  const percent = Number(steps[oddsStep]);
   if (!Number.isFinite(percent)) return getEqualProbability(participants);
   return Math.max(getEqualProbability(participants), Math.min(100, percent) / 100);
 }
@@ -238,12 +228,19 @@ function shuffle(items) {
 function validateParticipants() {
   const participants = getParticipants();
   count.textContent = `${participants.length}人`;
+  renderParticipantStrip(participants);
   if (participants.length < 2) {
     error.textContent = '参加者を2人以上入力してください。';
     return null;
   }
   error.textContent = '';
   return participants;
+}
+
+function renderParticipantStrip(participants) {
+  participantStrip.innerHTML = participants.map((name) => (
+    `<span class="participant-chip">${escapeHtml(compactName(name))}</span>`
+  )).join('');
 }
 
 function getRouletteSlices(participants) {

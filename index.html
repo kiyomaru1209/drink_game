@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f97316">
   <title>飲み会ミニゲーム</title>
-  <link rel="stylesheet" href="styles.css?v=20260508-7">
+  <link rel="stylesheet" href="styles.css?v=20260508-8">
 </head>
 <body>
   <main class="app">
@@ -21,7 +21,11 @@
           参加者名
           <span class="count-pill" id="participant-count">0人</span>
         </h2>
-        <textarea id="names-input" aria-label="参加者名入力欄" placeholder="勝木&#10;合原&#10;佐藤大樹&#10;まる&#10;村本"></textarea>
+        <details class="participant-editor">
+          <summary>参加者を編集</summary>
+          <textarea id="names-input" aria-label="参加者名入力欄" placeholder="勝木&#10;合原&#10;佐藤大樹&#10;まる&#10;村本"></textarea>
+        </details>
+        <div class="participant-strip" id="participant-strip" aria-label="参加者一覧"></div>
         <div class="error" id="error" role="alert" aria-live="polite"></div>
 
         <div class="games" role="tablist" aria-label="ゲーム選択">
@@ -50,6 +54,6 @@
   </main>
   <canvas class="confetti-canvas" id="confetti-canvas" aria-hidden="true"></canvas>
 
-  <script src="app.js?v=20260508-7" defer></script>
+  <script src="app.js?v=20260508-8" defer></script>
 </body>
 </html>
