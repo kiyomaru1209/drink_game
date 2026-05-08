@@ -1,0 +1,911 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>飲み会ミニゲーム</title>
+  <style>
+    :root {
+      --bg: #fff7ed;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #fed7aa;
+      --orange: #f97316;
+      --red: #ef4444;
+      --pink: #ec4899;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --yellow: #eab308;
+      --shadow: 0 18px 45px rgba(127, 29, 29, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 10% 10%, rgba(251, 191, 36, 0.28), transparent 28rem),
+        radial-gradient(circle at 92% 5%, rgba(236, 72, 153, 0.16), transparent 24rem),
+        linear-gradient(135deg, #fff7ed 0%, #fefce8 45%, #eff6ff 100%);
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    .app {
+      width: min(1120px, 100%);
+      margin: 0 auto;
+      padding: 24px 16px 36px;
+    }
+
+    .hero {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+
+    .eyebrow {
+      width: fit-content;
+      margin: 0;
+      padding: 6px 10px;
+      border: 1px solid rgba(249, 115, 22, 0.28);
+      border-radius: 999px;
+      color: #9a3412;
+      background: rgba(255, 255, 255, 0.7);
+      font-size: 0.84rem;
+      font-weight: 700;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2rem, 8vw, 4.25rem);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .lead {
+      max-width: 720px;
+      margin: 0;
+      color: #4b5563;
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(280px, 360px) 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid rgba(251, 146, 60, 0.34);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: var(--shadow);
+    }
+
+    .setup {
+      position: sticky;
+      top: 16px;
+      display: grid;
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .panel-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0;
+      font-size: 1.02rem;
+    }
+
+    .count-pill {
+      flex: 0 0 auto;
+      min-width: 64px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: #9a3412;
+      background: #ffedd5;
+      font-size: 0.82rem;
+      text-align: center;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 190px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 13px;
+      color: var(--ink);
+      background: #fff;
+      line-height: 1.6;
+      outline: none;
+    }
+
+    textarea:focus {
+      border-color: var(--orange);
+      box-shadow: 0 0 0 4px rgba(249, 115, 22, 0.16);
+    }
+
+    .error {
+      min-height: 22px;
+      color: #b91c1c;
+      font-size: 0.92rem;
+      font-weight: 700;
+    }
+
+    .games {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .game-tab,
+    .primary-button {
+      min-height: 48px;
+      border: 0;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 800;
+      transition: transform 160ms ease, box-shadow 160ms ease, background 160ms ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .game-tab {
+      padding: 10px 8px;
+      color: #9a3412;
+      background: #ffedd5;
+    }
+
+    .game-tab[aria-selected="true"] {
+      color: white;
+      background: linear-gradient(135deg, var(--orange), var(--pink));
+      box-shadow: 0 10px 22px rgba(249, 115, 22, 0.28);
+    }
+
+    .game-tab:active,
+    .primary-button:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .note {
+      margin: 0;
+      border-left: 4px solid var(--orange);
+      padding: 10px 12px;
+      border-radius: 8px;
+      color: #7c2d12;
+      background: #fff7ed;
+      font-size: 0.88rem;
+      line-height: 1.6;
+    }
+
+    .stage {
+      display: grid;
+      gap: 14px;
+      min-height: 640px;
+      padding: 16px;
+    }
+
+    .stage-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .stage-head h2 {
+      margin: 0;
+      font-size: clamp(1.35rem, 5vw, 2rem);
+    }
+
+    .hint {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.94rem;
+      line-height: 1.5;
+    }
+
+    .primary-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 154px;
+      padding: 12px 18px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--red), var(--orange));
+      box-shadow: 0 12px 28px rgba(239, 68, 68, 0.26);
+    }
+
+    .primary-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.6;
+      box-shadow: none;
+    }
+
+    .visual {
+      display: grid;
+      place-items: center;
+      min-height: 330px;
+      overflow: hidden;
+      border: 1px solid rgba(254, 215, 170, 0.85);
+      border-radius: 8px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 247, 237, 0.78)),
+        repeating-linear-gradient(45deg, rgba(249, 115, 22, 0.06) 0 12px, transparent 12px 24px);
+    }
+
+    .result {
+      display: grid;
+      place-items: center;
+      min-height: 120px;
+      border-radius: 8px;
+      padding: 18px;
+      color: #7f1d1d;
+      background: linear-gradient(135deg, #fff7ed, #fef3c7);
+      text-align: center;
+      font-weight: 900;
+      font-size: clamp(1.7rem, 8vw, 3.9rem);
+      line-height: 1.12;
+    }
+
+    .result.pop {
+      animation: pop 620ms cubic-bezier(.2, 1.4, .34, 1);
+    }
+
+    @keyframes pop {
+      0% { transform: scale(0.78) rotate(-2deg); filter: saturate(0.7); }
+      70% { transform: scale(1.05) rotate(1deg); }
+      100% { transform: scale(1) rotate(0); filter: saturate(1); }
+    }
+
+    .roulette-wrap {
+      position: relative;
+      width: min(78vw, 360px);
+      aspect-ratio: 1;
+    }
+
+    .pointer {
+      position: absolute;
+      z-index: 2;
+      top: -4px;
+      left: 50%;
+      width: 0;
+      height: 0;
+      border-left: 18px solid transparent;
+      border-right: 18px solid transparent;
+      border-top: 34px solid #111827;
+      transform: translateX(-50%);
+      filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.24));
+    }
+
+    .wheel {
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 18px 20px rgba(127, 29, 29, 0.18));
+      transition: transform 3.4s cubic-bezier(.12, .72, .12, 1);
+    }
+
+    .wheel text {
+      fill: #fff;
+      font-weight: 800;
+      font-size: 12px;
+      text-anchor: middle;
+      dominant-baseline: middle;
+      paint-order: stroke;
+      stroke: rgba(0, 0, 0, 0.32);
+      stroke-width: 3px;
+    }
+
+    .amidakuji {
+      width: min(100%, 640px);
+      height: auto;
+      min-height: 280px;
+    }
+
+    .amidakuji text {
+      fill: #1f2937;
+      font-size: 13px;
+      font-weight: 800;
+      text-anchor: middle;
+    }
+
+    .amidakuji .base {
+      stroke: #fb923c;
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+
+    .amidakuji .bridge {
+      stroke: #60a5fa;
+      stroke-width: 4;
+      stroke-linecap: round;
+    }
+
+    .amidakuji .route {
+      fill: none;
+      stroke: #e11d48;
+      stroke-width: 7;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0 3px 3px rgba(225, 29, 72, 0.28));
+    }
+
+    .bomb-screen,
+    .king-screen {
+      display: grid;
+      place-items: center;
+      gap: 12px;
+      width: min(100%, 520px);
+      min-height: 260px;
+      text-align: center;
+    }
+
+    .bomb-icon,
+    .crown-icon {
+      font-size: clamp(4rem, 22vw, 8rem);
+      line-height: 1;
+      filter: drop-shadow(0 12px 14px rgba(127, 29, 29, 0.18));
+    }
+
+    .bomb-icon.ticking {
+      animation: shake 180ms infinite;
+    }
+
+    .bomb-icon.explode {
+      animation: explode 640ms ease-out;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: rotate(-4deg) translateX(-2px); }
+      50% { transform: rotate(4deg) translateX(2px); }
+    }
+
+    @keyframes explode {
+      0% { transform: scale(0.8); filter: brightness(1); }
+      45% { transform: scale(1.35) rotate(8deg); filter: brightness(1.4) saturate(1.6); }
+      100% { transform: scale(1); filter: brightness(1); }
+    }
+
+    .current-name {
+      width: min(100%, 440px);
+      min-height: 78px;
+      display: grid;
+      place-items: center;
+      border-radius: 8px;
+      padding: 12px;
+      background: #fff;
+      box-shadow: inset 0 0 0 1px var(--line);
+      font-size: clamp(1.7rem, 8vw, 3.1rem);
+      font-weight: 900;
+    }
+
+    .order-list {
+      width: min(100%, 560px);
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .order-list li {
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      align-items: center;
+      gap: 10px;
+      min-height: 54px;
+      border: 1px solid rgba(96, 165, 250, 0.35);
+      border-radius: 8px;
+      padding: 8px 12px;
+      background: #fff;
+      font-size: 1.08rem;
+      font-weight: 800;
+    }
+
+    .rank {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      color: white;
+      background: var(--blue);
+      font-size: 0.95rem;
+    }
+
+    .empty-state {
+      color: var(--muted);
+      font-size: 1rem;
+      text-align: center;
+      line-height: 1.7;
+    }
+
+    @media (max-width: 820px) {
+      .app {
+        padding: 18px 12px 28px;
+      }
+
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .setup {
+        position: static;
+      }
+
+      .stage {
+        min-height: 560px;
+      }
+
+      .stage-head {
+        align-items: stretch;
+      }
+
+      .primary-button {
+        width: 100%;
+      }
+    }
+
+    @media (max-width: 460px) {
+      .games {
+        grid-template-columns: 1fr;
+      }
+
+      .visual {
+        min-height: 300px;
+      }
+
+      .result {
+        min-height: 108px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="hero" aria-labelledby="app-title">
+      <p class="eyebrow">名前を入れてすぐ遊べる</p>
+      <h1 id="app-title">飲み会ミニゲーム</h1>
+      <p class="lead">参加者の名前を1行に1人ずつ入力して、ルーレット、あみだくじ、爆弾ゲーム、王様ゲーム、順番決めをその場で遊べます。</p>
+    </section>
+
+    <div class="layout">
+      <aside class="panel setup">
+        <h2 class="panel-title">
+          参加者名
+          <span class="count-pill" id="participant-count">0人</span>
+        </h2>
+        <textarea id="names-input" aria-label="参加者名入力欄" placeholder="佐藤&#10;田中&#10;鈴木&#10;高橋&#10;山本"></textarea>
+        <div class="error" id="error" role="alert" aria-live="polite"></div>
+
+        <div class="games" role="tablist" aria-label="ゲーム選択">
+          <button class="game-tab" type="button" data-game="roulette" role="tab" aria-selected="true">ルーレット</button>
+          <button class="game-tab" type="button" data-game="amidakuji" role="tab" aria-selected="false">あみだくじ</button>
+          <button class="game-tab" type="button" data-game="bomb" role="tab" aria-selected="false">爆弾ゲーム</button>
+          <button class="game-tab" type="button" data-game="king" role="tab" aria-selected="false">王様ゲーム</button>
+          <button class="game-tab" type="button" data-game="order" role="tab" aria-selected="false">順番決め</button>
+        </div>
+
+        <p class="note">飲酒は無理せず、飲まない人にも配慮して遊んでください。<br>このアプリは飲酒を強制するものではなく、場を盛り上げるための抽選ツールです。</p>
+      </aside>
+
+      <section class="panel stage" aria-live="polite">
+        <div class="stage-head">
+          <div>
+            <h2 id="game-title">ルーレット</h2>
+            <p class="hint" id="game-hint">参加者の名前が入ったルーレットを回して、止まった人を選びます。</p>
+          </div>
+          <button class="primary-button" type="button" id="start-button">回す</button>
+        </div>
+        <div class="visual" id="visual"></div>
+        <div class="result" id="result">名前を入力して開始</div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const gameMeta = {
+      roulette: {
+        title: 'ルーレット',
+        hint: '参加者の名前が入ったルーレットを回して、止まった人を選びます。',
+        button: '回す'
+      },
+      amidakuji: {
+        title: 'あみだくじ',
+        hint: '参加者数に合わせてあみだくじを作り、選ばれたルートを表示します。',
+        button: '結果を見る'
+      },
+      bomb: {
+        title: '爆弾ゲーム',
+        hint: '名前が次々に切り替わり、ランダムなタイミングで止まった人が選ばれます。',
+        button: '開始'
+      },
+      king: {
+        title: '王様ゲーム',
+        hint: '参加者の中から王様を1人決めます。命令内容はその場で自由に決めてください。',
+        button: '王様を決める'
+      },
+      order: {
+        title: '順番決め',
+        hint: '参加者全員の順番をランダムに並び替えます。',
+        button: '順番を決める'
+      }
+    };
+
+    const colors = ['#f97316', '#ec4899', '#2563eb', '#16a34a', '#eab308', '#8b5cf6', '#14b8a6', '#ef4444'];
+
+    const input = document.querySelector('#names-input');
+    const count = document.querySelector('#participant-count');
+    const error = document.querySelector('#error');
+    const tabs = Array.from(document.querySelectorAll('.game-tab'));
+    const title = document.querySelector('#game-title');
+    const hint = document.querySelector('#game-hint');
+    const startButton = document.querySelector('#start-button');
+    const visual = document.querySelector('#visual');
+    const result = document.querySelector('#result');
+
+    let currentGame = 'roulette';
+    let wheelRotation = 0;
+    let rouletteTimer = null;
+    let bombTimer = null;
+    let bombTicker = null;
+
+    input.value = '佐藤\n田中\n鈴木\n高橋\n山本';
+
+    function getParticipants() {
+      return input.value
+        .split('\n')
+        .map((name) => name.trim())
+        .filter(Boolean);
+    }
+
+    function randomIndex(length) {
+      return Math.floor(Math.random() * length);
+    }
+
+    function shuffle(items) {
+      const list = [...items];
+      for (let index = list.length - 1; index > 0; index -= 1) {
+        const swapIndex = randomIndex(index + 1);
+        [list[index], list[swapIndex]] = [list[swapIndex], list[index]];
+      }
+      return list;
+    }
+
+    function validateParticipants() {
+      const participants = getParticipants();
+      count.textContent = `${participants.length}人`;
+      if (participants.length < 2) {
+        error.textContent = '参加者を2人以上入力してください。';
+        return null;
+      }
+      error.textContent = '';
+      return participants;
+    }
+
+    function setResult(message, isPop = true) {
+      result.innerHTML = message;
+      if (!isPop) return;
+      result.classList.remove('pop');
+      requestAnimationFrame(() => {
+        result.classList.add('pop');
+      });
+    }
+
+    function clearTimers() {
+      if (rouletteTimer) {
+        clearTimeout(rouletteTimer);
+        rouletteTimer = null;
+      }
+      if (bombTimer) {
+        clearTimeout(bombTimer);
+        bombTimer = null;
+      }
+      if (bombTicker) {
+        clearInterval(bombTicker);
+        bombTicker = null;
+      }
+      startButton.disabled = false;
+    }
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      })[char]);
+    }
+
+    function sectorPath(cx, cy, radius, startAngle, endAngle) {
+      const start = polarToCartesian(cx, cy, radius, endAngle);
+      const end = polarToCartesian(cx, cy, radius, startAngle);
+      const largeArc = endAngle - startAngle <= 180 ? 0 : 1;
+      return `M ${cx} ${cy} L ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArc} 0 ${end.x} ${end.y} Z`;
+    }
+
+    function polarToCartesian(cx, cy, radius, angle) {
+      const radian = (angle - 90) * Math.PI / 180;
+      return {
+        x: cx + radius * Math.cos(radian),
+        y: cy + radius * Math.sin(radian)
+      };
+    }
+
+    function renderRoulette(participants) {
+      const cx = 160;
+      const cy = 160;
+      const radius = 148;
+      const slice = 360 / participants.length;
+      const sectors = participants.map((name, index) => {
+        const start = index * slice;
+        const end = start + slice;
+        const mid = start + slice / 2;
+        const label = polarToCartesian(cx, cy, radius * 0.62, mid);
+        return `
+          <path d="${sectorPath(cx, cy, radius, start, end)}" fill="${colors[index % colors.length]}"></path>
+          <text x="${label.x}" y="${label.y}" transform="rotate(${mid}, ${label.x}, ${label.y})">${escapeHtml(name)}</text>
+        `;
+      }).join('');
+
+      visual.innerHTML = `
+        <div class="roulette-wrap">
+          <div class="pointer" aria-hidden="true"></div>
+          <svg class="wheel" id="wheel" viewBox="0 0 320 320" role="img" aria-label="参加者ルーレット">
+            ${sectors}
+            <circle cx="${cx}" cy="${cy}" r="42" fill="#fff" opacity="0.95"></circle>
+            <circle cx="${cx}" cy="${cy}" r="24" fill="#111827"></circle>
+          </svg>
+        </div>
+      `;
+      const wheel = document.querySelector('#wheel');
+      wheel.style.transform = `rotate(${wheelRotation}deg)`;
+    }
+
+    function runRoulette(participants) {
+      const selectedIndex = randomIndex(participants.length);
+      const slice = 360 / participants.length;
+      const targetCenter = selectedIndex * slice + slice / 2;
+      const extraSpins = 5 + randomIndex(4);
+      const currentMod = ((wheelRotation % 360) + 360) % 360;
+      const targetMod = (360 - targetCenter) % 360;
+      const correction = (targetMod - currentMod + 360) % 360;
+      wheelRotation += extraSpins * 360 + correction;
+      const wheel = document.querySelector('#wheel');
+      wheel.style.transform = `rotate(${wheelRotation}deg)`;
+      startButton.disabled = true;
+      setResult('回転中...', false);
+      rouletteTimer = window.setTimeout(() => {
+        setResult(`${escapeHtml(participants[selectedIndex])}さん！`);
+        startButton.disabled = false;
+        rouletteTimer = null;
+      }, 3500);
+    }
+
+    function buildAmidakuji(participants) {
+      const lanes = participants.length;
+      const width = Math.max(360, lanes * 90);
+      const height = 330;
+      const top = 48;
+      const bottom = 280;
+      const left = 38;
+      const right = width - 38;
+      const gap = lanes === 1 ? 0 : (right - left) / (lanes - 1);
+      const lineXs = participants.map((_, index) => left + gap * index);
+      const bridges = [];
+      const levels = Math.max(6, lanes + 3);
+
+      for (let level = 0; level < levels; level += 1) {
+        const y = top + 34 + level * ((bottom - top - 68) / Math.max(1, levels - 1));
+        const candidates = [];
+        for (let lane = 0; lane < lanes - 1; lane += 1) candidates.push(lane);
+        shuffle(candidates).slice(0, Math.max(1, Math.floor(lanes / 2))).forEach((lane) => {
+          const nearby = bridges.some((bridge) => Math.abs(bridge.y - y) < 12 && Math.abs(bridge.lane - lane) <= 1);
+          if (!nearby) bridges.push({ lane, y });
+        });
+      }
+      bridges.sort((a, b) => a.y - b.y);
+      return { width, height, top, bottom, lineXs, bridges };
+    }
+
+    function traceAmidakuji(startLane, data) {
+      let lane = startLane;
+      let y = data.top;
+      const points = [{ x: data.lineXs[lane], y }];
+      data.bridges.forEach((bridge) => {
+        if (bridge.lane === lane || bridge.lane + 1 === lane) {
+          points.push({ x: data.lineXs[lane], y: bridge.y });
+          lane = bridge.lane === lane ? lane + 1 : lane - 1;
+          points.push({ x: data.lineXs[lane], y: bridge.y });
+          y = bridge.y;
+        }
+      });
+      points.push({ x: data.lineXs[lane], y: data.bottom });
+      return { lane, points };
+    }
+
+    function renderAmidakuji(participants, route = null) {
+      const data = buildAmidakuji(participants);
+      const lines = data.lineXs.map((x) => `<line class="base" x1="${x}" y1="${data.top}" x2="${x}" y2="${data.bottom}"></line>`).join('');
+      const bridges = data.bridges.map((bridge) => `<line class="bridge" x1="${data.lineXs[bridge.lane]}" y1="${bridge.y}" x2="${data.lineXs[bridge.lane + 1]}" y2="${bridge.y}"></line>`).join('');
+      const names = participants.map((name, index) => `<text x="${data.lineXs[index]}" y="24">${escapeHtml(name)}</text>`).join('');
+      const goals = participants.map((_, index) => `<text x="${data.lineXs[index]}" y="315">${index + 1}</text>`).join('');
+      const routePath = route ? `<polyline class="route" points="${route.points.map((point) => `${point.x},${point.y}`).join(' ')}"></polyline>` : '';
+
+      visual.innerHTML = `
+        <svg class="amidakuji" viewBox="0 0 ${data.width} ${data.height}" role="img" aria-label="あみだくじ">
+          ${names}
+          ${lines}
+          ${bridges}
+          ${routePath}
+          ${goals}
+        </svg>
+      `;
+      visual.dataset.amida = JSON.stringify(data);
+    }
+
+    function runAmidakuji(participants) {
+      const data = buildAmidakuji(participants);
+      const startLane = randomIndex(participants.length);
+      const route = traceAmidakuji(startLane, data);
+      const lines = data.lineXs.map((x) => `<line class="base" x1="${x}" y1="${data.top}" x2="${x}" y2="${data.bottom}"></line>`).join('');
+      const bridges = data.bridges.map((bridge) => `<line class="bridge" x1="${data.lineXs[bridge.lane]}" y1="${bridge.y}" x2="${data.lineXs[bridge.lane + 1]}" y2="${bridge.y}"></line>`).join('');
+      const names = participants.map((name, index) => `<text x="${data.lineXs[index]}" y="24">${escapeHtml(name)}</text>`).join('');
+      const goals = participants.map((_, index) => `<text x="${data.lineXs[index]}" y="315">${index + 1}</text>`).join('');
+      visual.innerHTML = `
+        <svg class="amidakuji" viewBox="0 0 ${data.width} ${data.height}" role="img" aria-label="あみだくじの結果">
+          ${names}
+          ${lines}
+          ${bridges}
+          <polyline class="route" points="${route.points.map((point) => `${point.x},${point.y}`).join(' ')}"></polyline>
+          ${goals}
+        </svg>
+      `;
+      setResult(`${escapeHtml(participants[route.lane])}さん！`);
+    }
+
+    function renderBomb(participants) {
+      visual.innerHTML = `
+        <div class="bomb-screen">
+          <div class="bomb-icon" id="bomb-icon" aria-hidden="true">●</div>
+          <div class="current-name" id="current-name">${escapeHtml(participants[0] || '待機中')}</div>
+        </div>
+      `;
+    }
+
+    function runBomb(participants) {
+      clearTimers();
+      const bombIcon = document.querySelector('#bomb-icon');
+      const currentName = document.querySelector('#current-name');
+      let index = randomIndex(participants.length);
+      bombIcon.classList.add('ticking');
+      startButton.disabled = true;
+      setResult('ドキドキ...', false);
+
+      bombTicker = window.setInterval(() => {
+        index = (index + 1) % participants.length;
+        currentName.textContent = participants[index];
+      }, 120);
+
+      const duration = 2200 + randomIndex(2600);
+      bombTimer = window.setTimeout(() => {
+        clearInterval(bombTicker);
+        bombTicker = null;
+        bombIcon.classList.remove('ticking');
+        bombIcon.classList.add('explode');
+        setResult(`爆発！<br>${escapeHtml(participants[index])}さん！`);
+        startButton.disabled = false;
+        window.setTimeout(() => bombIcon.classList.remove('explode'), 700);
+      }, duration);
+    }
+
+    function renderKing(participants) {
+      visual.innerHTML = `
+        <div class="king-screen">
+          <div class="crown-icon" aria-hidden="true">♛</div>
+          <div class="current-name">${escapeHtml(participants[0] || '王様は誰？')}</div>
+        </div>
+      `;
+    }
+
+    function runKing(participants) {
+      const selected = participants[randomIndex(participants.length)];
+      visual.innerHTML = `
+        <div class="king-screen">
+          <div class="crown-icon" aria-hidden="true">♛</div>
+          <div class="current-name">${escapeHtml(selected)}</div>
+        </div>
+      `;
+      setResult(`王様は${escapeHtml(selected)}さん！`);
+    }
+
+    function renderOrder(participants, ordered = null) {
+      const list = ordered || participants;
+      visual.innerHTML = `
+        <ol class="order-list">
+          ${list.map((name, index) => `
+            <li>
+              <span class="rank">${index + 1}</span>
+              <span>${escapeHtml(name)}</span>
+            </li>
+          `).join('')}
+        </ol>
+      `;
+    }
+
+    function runOrder(participants) {
+      const ordered = shuffle(participants);
+      renderOrder(participants, ordered);
+      setResult('順番決定！');
+    }
+
+    function renderEmpty() {
+      visual.innerHTML = '<p class="empty-state">参加者を2人以上入力するとゲームを開始できます。</p>';
+      setResult('名前を入力して開始', false);
+    }
+
+    function renderGame() {
+      clearTimers();
+      const meta = gameMeta[currentGame];
+      title.textContent = meta.title;
+      hint.textContent = meta.hint;
+      startButton.textContent = meta.button;
+
+      const participants = validateParticipants();
+      if (!participants) {
+        startButton.disabled = true;
+        renderEmpty();
+        return;
+      }
+      startButton.disabled = false;
+
+      if (currentGame === 'roulette') renderRoulette(participants);
+      if (currentGame === 'amidakuji') renderAmidakuji(participants);
+      if (currentGame === 'bomb') renderBomb(participants);
+      if (currentGame === 'king') renderKing(participants);
+      if (currentGame === 'order') renderOrder(participants);
+      setResult('ボタンを押して開始', false);
+    }
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        currentGame = tab.dataset.game;
+        tabs.forEach((item) => item.setAttribute('aria-selected', String(item === tab)));
+        renderGame();
+      });
+    });
+
+    input.addEventListener('input', renderGame);
+
+    startButton.addEventListener('click', () => {
+      const participants = validateParticipants();
+      if (!participants) {
+        renderEmpty();
+        return;
+      }
+
+      if (currentGame === 'roulette') runRoulette(participants);
+      if (currentGame === 'amidakuji') runAmidakuji(participants);
+      if (currentGame === 'bomb') runBomb(participants);
+      if (currentGame === 'king') runKing(participants);
+      if (currentGame === 'order') runOrder(participants);
+    });
+
+    renderGame();
+  </script>
+</body>
+</html>
