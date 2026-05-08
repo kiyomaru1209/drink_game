@@ -29,12 +29,14 @@ const gameMeta = {
 const colors = ['#f97316', '#ec4899', '#2563eb', '#16a34a', '#eab308', '#8b5cf6', '#14b8a6', '#ef4444'];
 const settings = window.DRINK_GAME_SETTINGS || {};
 const defaultParticipants = Array.isArray(settings.defaultParticipants) ? settings.defaultParticipants : [];
-const configuredWeights = settings.weights || {};
+const targetParticipant = settings.targetParticipant || '合原';
+const probabilitySteps = settings.probabilitySteps || {};
 const storageKeys = {
   names: 'drinkGame.names.v1',
+  gameRuns: 'drinkGame.gameRuns.v1',
   version: 'drinkGame.version'
 };
-const appVersion = '2026-05-08-hidden-weights-v3';
+const appVersion = '2026-05-08-progressive-odds-v4';
 const legacyDemoParticipants = ['佐藤', '田中', '鈴木', '高橋', '山本'];
 
 const input = document.querySelector('#names-input');
@@ -57,6 +59,7 @@ let bombTimer = null;
 let bombTicker = null;
 let confettiFrame = null;
 let confettiPieces = [];
+let gameRuns = loadGameRuns();
 
 migrateStoredData();
 
@@ -77,6 +80,7 @@ function migrateStoredData() {
     }
 
     localStorage.removeItem('drinkGame.weights.v1');
+    localStorage.removeItem(storageKeys.gameRuns);
     localStorage.setItem(storageKeys.version, appVersion);
   } catch (error) {
     // localStorage が使えない環境では、メモリ上の初期値で動かす。
@@ -108,6 +112,40 @@ function saveNames(participants = getParticipants()) {
   }
 }
 
+function loadGameRuns() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKeys.gameRuns));
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      return Object.fromEntries(
+        Object.entries(stored)
+          .map(([game, count]) => [game, Number(count)])
+          .filter(([, count]) => Number.isFinite(count) && count >= 0)
+      );
+    }
+  } catch (error) {
+    localStorage.removeItem(storageKeys.gameRuns);
+  }
+  return {};
+}
+
+function saveGameRuns() {
+  try {
+    localStorage.setItem(storageKeys.gameRuns, JSON.stringify(gameRuns));
+  } catch (error) {
+    // 保存できない環境では、ページを開いている間だけ進行する。
+  }
+}
+
+function markGamePlayed(game) {
+  gameRuns[game] = getGameRunCount(game) + 1;
+  saveGameRuns();
+}
+
+function getGameRunCount(game) {
+  const count = Number(gameRuns[game]);
+  return Number.isFinite(count) && count >= 0 ? count : 0;
+}
+
 function getParticipants() {
   return input.value
     .split('\n')
@@ -119,45 +157,45 @@ function randomIndex(length) {
   return Math.floor(Math.random() * length);
 }
 
-function getWeight(name) {
-  const weight = Number(configuredWeights[name]);
-  return Number.isFinite(weight) && weight >= 0 ? weight : 1;
-}
+function progressiveRandomIndex(game, participants) {
+  const targetIndex = participants.indexOf(targetParticipant);
+  const targetProbability = getTargetProbability(game, participants);
+  const equalProbability = getEqualProbability(participants);
 
-function getWeights(participants) {
-  return participants.map((name) => getWeight(name));
-}
-
-function getWeightTotal(participants) {
-  return getWeights(participants).reduce((total, weight) => total + Math.max(0, weight), 0);
-}
-
-function weightedRandomIndex(participants) {
-  const weights = getWeights(participants).map((weight) => Math.max(0, weight));
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  if (total <= 0) return randomIndex(participants.length);
-
-  let cursor = Math.random() * total;
-  for (let index = 0; index < weights.length; index += 1) {
-    cursor -= weights[index];
-    if (cursor <= 0) return index;
+  if (targetIndex < 0 || targetProbability <= equalProbability + 0.000001) {
+    return randomIndex(participants.length);
   }
-  return participants.length - 1;
+
+  if (Math.random() < targetProbability) {
+    return targetIndex;
+  }
+
+  const candidates = participants
+    .map((_, index) => index)
+    .filter((index) => index !== targetIndex);
+  return candidates[randomIndex(candidates.length)];
 }
 
-function weightedShuffle(participants) {
-  if (getWeightTotal(participants) <= 0) return shuffle(participants);
+function progressiveShuffle(game, participants) {
+  const firstIndex = progressiveRandomIndex(game, participants);
+  const first = participants[firstIndex];
+  const rest = participants.filter((_, index) => index !== firstIndex);
+  return [first, ...shuffle(rest)];
+}
 
-  return participants
-    .map((name) => {
-      const weight = Math.max(0, getWeight(name));
-      return {
-        name,
-        key: weight > 0 ? Math.log(Math.random()) / weight : -1000000 + Math.random()
-      };
-    })
-    .sort((a, b) => b.key - a.key)
-    .map((item) => item.name);
+function getTargetProbability(game, participants) {
+  const targetIndex = participants.indexOf(targetParticipant);
+  if (targetIndex < 0) return getEqualProbability(participants);
+
+  const steps = Array.isArray(probabilitySteps[game]) ? probabilitySteps[game] : [];
+  const runCount = getGameRunCount(game);
+  const percent = Number(steps[runCount]);
+  if (!Number.isFinite(percent)) return getEqualProbability(participants);
+  return Math.max(getEqualProbability(participants), Math.min(100, percent) / 100);
+}
+
+function getEqualProbability(participants) {
+  return participants.length > 0 ? 1 / participants.length : 0;
 }
 
 function shuffle(items) {
@@ -355,7 +393,7 @@ function renderRoulette(participants) {
 }
 
 function runRoulette(participants) {
-  const selectedIndex = weightedRandomIndex(participants);
+  const selectedIndex = progressiveRandomIndex('roulette', participants);
   const targetCenter = getRouletteSlices(participants)[selectedIndex].center;
   const extraSpins = 5 + randomIndex(4);
   const currentMod = ((wheelRotation % 360) + 360) % 360;
@@ -369,10 +407,11 @@ function runRoulette(participants) {
   startButton.disabled = true;
   setResult('回転中...', false);
   rouletteTimer = window.setTimeout(() => {
-    setVisualPlaying(false);
-    wheel.classList.remove('is-spinning');
-    setResult(`${escapeHtml(participants[selectedIndex])}さん！`);
-    celebrate('big');
+      setVisualPlaying(false);
+      wheel.classList.remove('is-spinning');
+      setResult(`${escapeHtml(participants[selectedIndex])}さん！`);
+      markGamePlayed('roulette');
+      celebrate('big');
     startButton.disabled = false;
     rouletteTimer = null;
   }, 3500);
@@ -442,7 +481,7 @@ function renderAmidakuji(participants, route = null) {
 
 function runAmidakuji(participants) {
   const data = buildAmidakuji(participants);
-  const selectedIndex = weightedRandomIndex(participants);
+  const selectedIndex = progressiveRandomIndex('amidakuji', participants);
   const routes = participants.map((_, lane) => traceAmidakuji(lane, data));
   const startLane = Math.max(0, routes.findIndex((route) => route.lane === selectedIndex));
   const route = traceAmidakuji(startLane, data);
@@ -460,6 +499,7 @@ function runAmidakuji(participants) {
     </svg>
   `;
   setResult(`${escapeHtml(participants[route.lane])}さん！`);
+  markGamePlayed('amidakuji');
   celebrate('normal');
 }
 
@@ -484,7 +524,7 @@ function runBomb(participants) {
   clearTimers();
   const bombIcon = document.querySelector('#bomb-icon');
   const currentName = document.querySelector('#current-name');
-  const selectedIndex = weightedRandomIndex(participants);
+  const selectedIndex = progressiveRandomIndex('bomb', participants);
   let index = randomIndex(participants.length);
   bombIcon.classList.add('ticking');
   setVisualPlaying(true);
@@ -505,6 +545,7 @@ function runBomb(participants) {
     bombIcon.classList.add('explode');
     currentName.textContent = participants[selectedIndex];
     setResult(`爆発！<br>${escapeHtml(participants[selectedIndex])}さん！`);
+    markGamePlayed('bomb');
     celebrate('bomb');
     startButton.disabled = false;
     window.setTimeout(() => bombIcon.classList.remove('explode'), 700);
@@ -521,7 +562,7 @@ function renderKing(participants) {
 }
 
 function runKing(participants) {
-  const selected = participants[weightedRandomIndex(participants)];
+  const selected = participants[progressiveRandomIndex('king', participants)];
   visual.innerHTML = `
     <div class="king-screen">
       ${crownSvg()}
@@ -529,6 +570,7 @@ function runKing(participants) {
     </div>
   `;
   setResult(`王様は${escapeHtml(selected)}さん！`);
+  markGamePlayed('king');
   celebrate('big');
 }
 
@@ -566,9 +608,10 @@ function renderOrder(participants, ordered = null) {
 }
 
 function runOrder(participants) {
-  const ordered = weightedShuffle(participants);
+  const ordered = progressiveShuffle('order', participants);
   renderOrder(participants, ordered);
   setResult('順番決定！');
+  markGamePlayed('order');
   celebrate('normal');
 }
 
