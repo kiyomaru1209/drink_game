@@ -49,8 +49,11 @@ const defaultParticipants = [
 ];
 const storageKeys = {
   names: 'drinkGame.names.v1',
-  weights: 'drinkGame.weights.v1'
+  weights: 'drinkGame.weights.v1',
+  version: 'drinkGame.version'
 };
+const appVersion = '2026-05-08-weighted-members-v2';
+const legacyDemoParticipants = ['佐藤', '田中', '鈴木', '高橋', '山本'];
 
 const input = document.querySelector('#names-input');
 const count = document.querySelector('#participant-count');
@@ -74,9 +77,40 @@ let bombTimer = null;
 let bombTicker = null;
 let confettiFrame = null;
 let confettiPieces = [];
+
+migrateStoredData();
 let weightsByName = loadWeights();
 
 input.value = loadNames().join('\n');
+saveNames();
+
+function migrateStoredData() {
+  try {
+    const version = localStorage.getItem(storageKeys.version);
+    if (version === appVersion) return;
+
+    const storedNames = JSON.parse(localStorage.getItem(storageKeys.names));
+    const hasNames = Array.isArray(storedNames) && storedNames.some((name) => String(name).trim());
+    const shouldUseDefaultMembers = !hasNames || namesEqual(storedNames, legacyDemoParticipants);
+
+    if (shouldUseDefaultMembers) {
+      localStorage.setItem(storageKeys.names, JSON.stringify(defaultParticipants));
+      localStorage.setItem(
+        storageKeys.weights,
+        JSON.stringify(Object.fromEntries(defaultParticipants.map((name) => [name, 1])))
+      );
+    }
+
+    localStorage.setItem(storageKeys.version, appVersion);
+  } catch (error) {
+    // localStorage が使えない環境では、メモリ上の初期値で動かす。
+  }
+}
+
+function namesEqual(left, right) {
+  if (!Array.isArray(left) || left.length !== right.length) return false;
+  return left.every((name, index) => String(name).trim() === right[index]);
+}
 
 function loadNames() {
   try {
