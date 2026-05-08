@@ -27,39 +27,19 @@ const gameMeta = {
 };
 
 const colors = ['#f97316', '#ec4899', '#2563eb', '#16a34a', '#eab308', '#8b5cf6', '#14b8a6', '#ef4444'];
-const defaultParticipants = [
-  '勝木',
-  '合原',
-  '佐藤大樹',
-  'まる',
-  '村本',
-  'たも',
-  '清水優太',
-  'だいき',
-  '西塚',
-  'たばた',
-  '吉川',
-  '石神',
-  'そら',
-  'あらい',
-  'Kanda',
-  'AK',
-  'むらかみ',
-  'まるや'
-];
+const settings = window.DRINK_GAME_SETTINGS || {};
+const defaultParticipants = Array.isArray(settings.defaultParticipants) ? settings.defaultParticipants : [];
+const configuredWeights = settings.weights || {};
 const storageKeys = {
   names: 'drinkGame.names.v1',
-  weights: 'drinkGame.weights.v1',
   version: 'drinkGame.version'
 };
-const appVersion = '2026-05-08-weighted-members-v2';
+const appVersion = '2026-05-08-hidden-weights-v3';
 const legacyDemoParticipants = ['佐藤', '田中', '鈴木', '高橋', '山本'];
 
 const input = document.querySelector('#names-input');
 const count = document.querySelector('#participant-count');
 const error = document.querySelector('#error');
-const weightList = document.querySelector('#weight-list');
-const resetButton = document.querySelector('#reset-button');
 const tabs = Array.from(document.querySelectorAll('.game-tab'));
 const title = document.querySelector('#game-title');
 const hint = document.querySelector('#game-hint');
@@ -79,7 +59,6 @@ let confettiFrame = null;
 let confettiPieces = [];
 
 migrateStoredData();
-let weightsByName = loadWeights();
 
 input.value = loadNames().join('\n');
 saveNames();
@@ -95,12 +74,9 @@ function migrateStoredData() {
 
     if (shouldUseDefaultMembers) {
       localStorage.setItem(storageKeys.names, JSON.stringify(defaultParticipants));
-      localStorage.setItem(
-        storageKeys.weights,
-        JSON.stringify(Object.fromEntries(defaultParticipants.map((name) => [name, 1])))
-      );
     }
 
+    localStorage.removeItem('drinkGame.weights.v1');
     localStorage.setItem(storageKeys.version, appVersion);
   } catch (error) {
     // localStorage が使えない環境では、メモリ上の初期値で動かす。
@@ -124,33 +100,9 @@ function loadNames() {
   return defaultParticipants;
 }
 
-function loadWeights() {
-  try {
-    const stored = JSON.parse(localStorage.getItem(storageKeys.weights));
-    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
-      return Object.fromEntries(
-        Object.entries(stored)
-          .map(([name, value]) => [name, Number(value)])
-          .filter(([, value]) => Number.isFinite(value))
-      );
-    }
-  } catch (error) {
-    localStorage.removeItem(storageKeys.weights);
-  }
-  return {};
-}
-
 function saveNames(participants = getParticipants()) {
   try {
     localStorage.setItem(storageKeys.names, JSON.stringify(participants));
-  } catch (error) {
-    // 保存できない環境でもゲーム自体は続行する。
-  }
-}
-
-function saveWeights() {
-  try {
-    localStorage.setItem(storageKeys.weights, JSON.stringify(weightsByName));
   } catch (error) {
     // 保存できない環境でもゲーム自体は続行する。
   }
@@ -168,7 +120,7 @@ function randomIndex(length) {
 }
 
 function getWeight(name) {
-  const weight = Number(weightsByName[name]);
+  const weight = Number(configuredWeights[name]);
   return Number.isFinite(weight) && weight >= 0 ? weight : 1;
 }
 
@@ -176,23 +128,8 @@ function getWeights(participants) {
   return participants.map((name) => getWeight(name));
 }
 
-function syncWeights(participants) {
-  participants.forEach((name) => {
-    if (!Number.isFinite(Number(weightsByName[name]))) {
-      weightsByName[name] = 1;
-    }
-  });
-  saveWeights();
-}
-
 function getWeightTotal(participants) {
   return getWeights(participants).reduce((total, weight) => total + Math.max(0, weight), 0);
-}
-
-function getProbabilityPercent(name, participants) {
-  const total = getWeightTotal(participants);
-  if (total <= 0) return 0;
-  return Math.round((Math.max(0, getWeight(name)) / total) * 100);
 }
 
 function weightedRandomIndex(participants) {
@@ -240,30 +177,7 @@ function validateParticipants() {
     return null;
   }
   error.textContent = '';
-  syncWeights(participants);
   return participants;
-}
-
-function renderWeightControls() {
-  const participants = getParticipants();
-  syncWeights(participants);
-  if (!participants.length) {
-    weightList.innerHTML = '<p class="weight-help">名前を入力すると設定できます。</p>';
-    return;
-  }
-
-  weightList.innerHTML = participants.map((name, index) => {
-    const weight = getWeight(name);
-    const percent = getProbabilityPercent(name, participants);
-    return `
-      <label class="weight-row">
-        <span class="weight-name">${escapeHtml(name)}</span>
-        <input type="range" min="0" max="10" step="0.5" value="${weight}" data-index="${index}" aria-label="${escapeHtml(name)}の当たりやすさ">
-        <span class="weight-value">${weight}</span>
-        <span class="weight-percent">${percent}%</span>
-      </label>
-    `;
-  }).join('');
 }
 
 function getRouletteSlices(participants) {
@@ -701,27 +615,6 @@ tabs.forEach((tab) => {
 
 input.addEventListener('input', () => {
   saveNames();
-  renderWeightControls();
-  renderGame();
-});
-
-weightList.addEventListener('input', (event) => {
-  if (event.target.type !== 'range') return;
-  const participants = getParticipants();
-  const name = participants[Number(event.target.dataset.index)];
-  if (!name) return;
-  weightsByName[name] = Number(event.target.value);
-  saveWeights();
-  renderWeightControls();
-  renderGame();
-});
-
-resetButton.addEventListener('click', () => {
-  input.value = defaultParticipants.join('\n');
-  weightsByName = Object.fromEntries(defaultParticipants.map((name) => [name, 1]));
-  saveNames(defaultParticipants);
-  saveWeights();
-  renderWeightControls();
   renderGame();
 });
 
@@ -741,5 +634,4 @@ startButton.addEventListener('click', () => {
   if (currentGame === 'order') runOrder(participants);
 });
 
-renderWeightControls();
 renderGame();

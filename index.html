@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>飲み会ミニゲーム</title>
-  <link rel="stylesheet" href="styles.css?v=20260508-2">
+  <link rel="stylesheet" href="styles.css?v=20260508-3">
 </head>
 <body>
   <main class="app">
@@ -22,15 +22,6 @@
         </h2>
         <textarea id="names-input" aria-label="参加者名入力欄" placeholder="勝木&#10;合原&#10;佐藤大樹&#10;まる&#10;村本"></textarea>
         <div class="error" id="error" role="alert" aria-live="polite"></div>
-
-        <div class="weight-panel">
-          <div class="weight-head">
-            <h3>当たりやすさ</h3>
-            <button class="text-button" type="button" id="reset-button">初期メンバーに戻す</button>
-          </div>
-          <p class="weight-help">名前と設定はこのブラウザに保存されます。0にすると基本的に当たりません。</p>
-          <div class="weight-list" id="weight-list" aria-label="参加者ごとの当たりやすさ設定"></div>
-        </div>
 
         <div class="games" role="tablist" aria-label="ゲーム選択">
           <button class="game-tab" type="button" data-game="roulette" role="tab" aria-selected="true">ルーレット</button>
@@ -58,6 +49,7 @@
   </main>
   <canvas class="confetti-canvas" id="confetti-canvas" aria-hidden="true"></canvas>
 
-  <script src="app.js?v=20260508-2" defer></script>
+  <script src="settings.js?v=20260508-3"></script>
+  <script src="app.js?v=20260508-3" defer></script>
 </body>
 </html>
