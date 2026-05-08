@@ -27,10 +27,36 @@ const gameMeta = {
 };
 
 const colors = ['#f97316', '#ec4899', '#2563eb', '#16a34a', '#eab308', '#8b5cf6', '#14b8a6', '#ef4444'];
+const defaultParticipants = [
+  '勝木',
+  '合原',
+  '佐藤大樹',
+  'まる',
+  '村本',
+  'たも',
+  '清水優太',
+  'だいき',
+  '西塚',
+  'たばた',
+  '吉川',
+  '石神',
+  'そら',
+  'あらい',
+  'Kanda',
+  'AK',
+  'むらかみ',
+  'まるや'
+];
+const storageKeys = {
+  names: 'drinkGame.names.v1',
+  weights: 'drinkGame.weights.v1'
+};
 
 const input = document.querySelector('#names-input');
 const count = document.querySelector('#participant-count');
 const error = document.querySelector('#error');
+const weightList = document.querySelector('#weight-list');
+const resetButton = document.querySelector('#reset-button');
 const tabs = Array.from(document.querySelectorAll('.game-tab'));
 const title = document.querySelector('#game-title');
 const hint = document.querySelector('#game-hint');
@@ -48,8 +74,53 @@ let bombTimer = null;
 let bombTicker = null;
 let confettiFrame = null;
 let confettiPieces = [];
+let weightsByName = loadWeights();
 
-input.value = '佐藤\n田中\n鈴木\n高橋\n山本';
+input.value = loadNames().join('\n');
+
+function loadNames() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKeys.names));
+    if (Array.isArray(stored) && stored.some((name) => typeof name === 'string' && name.trim())) {
+      return stored.map((name) => String(name).trim()).filter(Boolean);
+    }
+  } catch (error) {
+    localStorage.removeItem(storageKeys.names);
+  }
+  return defaultParticipants;
+}
+
+function loadWeights() {
+  try {
+    const stored = JSON.parse(localStorage.getItem(storageKeys.weights));
+    if (stored && typeof stored === 'object' && !Array.isArray(stored)) {
+      return Object.fromEntries(
+        Object.entries(stored)
+          .map(([name, value]) => [name, Number(value)])
+          .filter(([, value]) => Number.isFinite(value))
+      );
+    }
+  } catch (error) {
+    localStorage.removeItem(storageKeys.weights);
+  }
+  return {};
+}
+
+function saveNames(participants = getParticipants()) {
+  try {
+    localStorage.setItem(storageKeys.names, JSON.stringify(participants));
+  } catch (error) {
+    // 保存できない環境でもゲーム自体は続行する。
+  }
+}
+
+function saveWeights() {
+  try {
+    localStorage.setItem(storageKeys.weights, JSON.stringify(weightsByName));
+  } catch (error) {
+    // 保存できない環境でもゲーム自体は続行する。
+  }
+}
 
 function getParticipants() {
   return input.value
@@ -60,6 +131,62 @@ function getParticipants() {
 
 function randomIndex(length) {
   return Math.floor(Math.random() * length);
+}
+
+function getWeight(name) {
+  const weight = Number(weightsByName[name]);
+  return Number.isFinite(weight) && weight >= 0 ? weight : 1;
+}
+
+function getWeights(participants) {
+  return participants.map((name) => getWeight(name));
+}
+
+function syncWeights(participants) {
+  participants.forEach((name) => {
+    if (!Number.isFinite(Number(weightsByName[name]))) {
+      weightsByName[name] = 1;
+    }
+  });
+  saveWeights();
+}
+
+function getWeightTotal(participants) {
+  return getWeights(participants).reduce((total, weight) => total + Math.max(0, weight), 0);
+}
+
+function getProbabilityPercent(name, participants) {
+  const total = getWeightTotal(participants);
+  if (total <= 0) return 0;
+  return Math.round((Math.max(0, getWeight(name)) / total) * 100);
+}
+
+function weightedRandomIndex(participants) {
+  const weights = getWeights(participants).map((weight) => Math.max(0, weight));
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  if (total <= 0) return randomIndex(participants.length);
+
+  let cursor = Math.random() * total;
+  for (let index = 0; index < weights.length; index += 1) {
+    cursor -= weights[index];
+    if (cursor <= 0) return index;
+  }
+  return participants.length - 1;
+}
+
+function weightedShuffle(participants) {
+  if (getWeightTotal(participants) <= 0) return shuffle(participants);
+
+  return participants
+    .map((name) => {
+      const weight = Math.max(0, getWeight(name));
+      return {
+        name,
+        key: weight > 0 ? Math.log(Math.random()) / weight : -1000000 + Math.random()
+      };
+    })
+    .sort((a, b) => b.key - a.key)
+    .map((item) => item.name);
 }
 
 function shuffle(items) {
@@ -79,7 +206,51 @@ function validateParticipants() {
     return null;
   }
   error.textContent = '';
+  syncWeights(participants);
   return participants;
+}
+
+function renderWeightControls() {
+  const participants = getParticipants();
+  syncWeights(participants);
+  if (!participants.length) {
+    weightList.innerHTML = '<p class="weight-help">名前を入力すると設定できます。</p>';
+    return;
+  }
+
+  weightList.innerHTML = participants.map((name, index) => {
+    const weight = getWeight(name);
+    const percent = getProbabilityPercent(name, participants);
+    return `
+      <label class="weight-row">
+        <span class="weight-name">${escapeHtml(name)}</span>
+        <input type="range" min="0" max="10" step="0.5" value="${weight}" data-index="${index}" aria-label="${escapeHtml(name)}の当たりやすさ">
+        <span class="weight-value">${weight}</span>
+        <span class="weight-percent">${percent}%</span>
+      </label>
+    `;
+  }).join('');
+}
+
+function getRouletteSlices(participants) {
+  const total = getWeightTotal(participants);
+  const effectiveWeights = total > 0
+    ? getWeights(participants).map((weight) => Math.max(0, weight))
+    : participants.map(() => 1);
+  const effectiveTotal = effectiveWeights.reduce((sum, weight) => sum + weight, 0);
+  let cursor = 0;
+
+  return effectiveWeights.map((weight, index) => {
+    const start = cursor;
+    const size = 360 * (weight / effectiveTotal);
+    cursor += size;
+    return {
+      index,
+      start,
+      end: cursor,
+      center: start + size / 2
+    };
+  });
 }
 
 function setResult(message, isPop = true) {
@@ -211,14 +382,14 @@ function renderRoulette(participants) {
   const cx = 160;
   const cy = 160;
   const radius = 148;
-  const slice = 360 / participants.length;
-  const sectors = participants.map((name, index) => {
-    const start = index * slice;
-    const end = start + slice;
-    const mid = start + slice / 2;
+  const slices = getRouletteSlices(participants);
+  const sectors = slices.map((slice) => {
+    if (slice.end - slice.start < 0.5) return '';
+    const name = participants[slice.index];
+    const mid = slice.center;
     const label = polarToCartesian(cx, cy, radius * 0.62, mid);
     return `
-      <path d="${sectorPath(cx, cy, radius, start, end)}" fill="${colors[index % colors.length]}"></path>
+      <path d="${sectorPath(cx, cy, radius, slice.start, slice.end)}" fill="${colors[slice.index % colors.length]}"></path>
       <text x="${label.x}" y="${label.y}" transform="rotate(${mid}, ${label.x}, ${label.y})">${escapeHtml(name)}</text>
     `;
   }).join('');
@@ -241,9 +412,8 @@ function renderRoulette(participants) {
 }
 
 function runRoulette(participants) {
-  const selectedIndex = randomIndex(participants.length);
-  const slice = 360 / participants.length;
-  const targetCenter = selectedIndex * slice + slice / 2;
+  const selectedIndex = weightedRandomIndex(participants);
+  const targetCenter = getRouletteSlices(participants)[selectedIndex].center;
   const extraSpins = 5 + randomIndex(4);
   const currentMod = ((wheelRotation % 360) + 360) % 360;
   const targetMod = (360 - targetCenter) % 360;
@@ -329,7 +499,9 @@ function renderAmidakuji(participants, route = null) {
 
 function runAmidakuji(participants) {
   const data = buildAmidakuji(participants);
-  const startLane = randomIndex(participants.length);
+  const selectedIndex = weightedRandomIndex(participants);
+  const routes = participants.map((_, lane) => traceAmidakuji(lane, data));
+  const startLane = Math.max(0, routes.findIndex((route) => route.lane === selectedIndex));
   const route = traceAmidakuji(startLane, data);
   const lines = data.lineXs.map((x) => `<line class="base" x1="${x}" y1="${data.top}" x2="${x}" y2="${data.bottom}"></line>`).join('');
   const bridges = data.bridges.map((bridge) => `<line class="bridge" x1="${data.lineXs[bridge.lane]}" y1="${bridge.y}" x2="${data.lineXs[bridge.lane + 1]}" y2="${bridge.y}"></line>`).join('');
@@ -369,6 +541,7 @@ function runBomb(participants) {
   clearTimers();
   const bombIcon = document.querySelector('#bomb-icon');
   const currentName = document.querySelector('#current-name');
+  const selectedIndex = weightedRandomIndex(participants);
   let index = randomIndex(participants.length);
   bombIcon.classList.add('ticking');
   setVisualPlaying(true);
@@ -387,7 +560,8 @@ function runBomb(participants) {
     setVisualPlaying(false);
     bombIcon.classList.remove('ticking');
     bombIcon.classList.add('explode');
-    setResult(`爆発！<br>${escapeHtml(participants[index])}さん！`);
+    currentName.textContent = participants[selectedIndex];
+    setResult(`爆発！<br>${escapeHtml(participants[selectedIndex])}さん！`);
     celebrate('bomb');
     startButton.disabled = false;
     window.setTimeout(() => bombIcon.classList.remove('explode'), 700);
@@ -404,7 +578,7 @@ function renderKing(participants) {
 }
 
 function runKing(participants) {
-  const selected = participants[randomIndex(participants.length)];
+  const selected = participants[weightedRandomIndex(participants)];
   visual.innerHTML = `
     <div class="king-screen">
       ${crownSvg()}
@@ -449,7 +623,7 @@ function renderOrder(participants, ordered = null) {
 }
 
 function runOrder(participants) {
-  const ordered = shuffle(participants);
+  const ordered = weightedShuffle(participants);
   renderOrder(participants, ordered);
   setResult('順番決定！');
   celebrate('normal');
@@ -491,7 +665,32 @@ tabs.forEach((tab) => {
   });
 });
 
-input.addEventListener('input', renderGame);
+input.addEventListener('input', () => {
+  saveNames();
+  renderWeightControls();
+  renderGame();
+});
+
+weightList.addEventListener('input', (event) => {
+  if (event.target.type !== 'range') return;
+  const participants = getParticipants();
+  const name = participants[Number(event.target.dataset.index)];
+  if (!name) return;
+  weightsByName[name] = Number(event.target.value);
+  saveWeights();
+  renderWeightControls();
+  renderGame();
+});
+
+resetButton.addEventListener('click', () => {
+  input.value = defaultParticipants.join('\n');
+  weightsByName = Object.fromEntries(defaultParticipants.map((name) => [name, 1]));
+  saveNames(defaultParticipants);
+  saveWeights();
+  renderWeightControls();
+  renderGame();
+});
+
 window.addEventListener('resize', resizeConfettiCanvas);
 
 startButton.addEventListener('click', () => {
@@ -508,4 +707,5 @@ startButton.addEventListener('click', () => {
   if (currentGame === 'order') runOrder(participants);
 });
 
+renderWeightControls();
 renderGame();
